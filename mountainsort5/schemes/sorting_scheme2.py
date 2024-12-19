@@ -96,7 +96,7 @@ def sorting_scheme2(
             snippet_T2=sorting_parameters.snippet_T2,
             npca_per_channel=sorting_parameters.phase1_npca_per_channel,
             npca_per_subdivision=sorting_parameters.phase1_npca_per_subdivision,
-            svd_solver=sorting_parameters.phase_1_svd_solver,
+            svd_solver=sorting_parameters.phase1_svd_solver,
 
         )
     )
