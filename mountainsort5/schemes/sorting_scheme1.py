@@ -11,7 +11,27 @@ from ..core.isosplit6_subdivision_method import isosplit6_subdivision_method
 from ..core.compute_templates import compute_templates
 from ..core.compute_pca_features import compute_pca_features
 from ..core.Timer import Timer
+from spikeinterface.sortingcomponents.peak_detection import detect_peaks
 
+
+def remove_edge_spikes(
+        times, 
+        channel_indices,         
+        T1,
+        T2,
+        num_samples
+        ):
+    
+    new_times = []
+    new_channel_indices = []
+
+    for time, channel_index in zip(times, channel_indices):
+        if time > T1 and time < num_samples - T2:
+            new_times.append(time)
+            new_channel_indices.append(channel_index)
+
+    return np.array(new_times), np.array(new_channel_indices)
+        
 
 @dataclass
 class SortingSchemeExtraOutput:
@@ -67,18 +87,29 @@ def sorting_scheme1(
 
     print('Detecting spikes')
     tt = Timer('detect_spikes')
+
+
+
     time_radius = int(math.ceil(sorting_parameters.detect_time_radius_msec / 1000 * sampling_frequency))
-    times, channel_indices = detect_spikes(
-        traces=traces,
-        channel_locations=channel_locations,
-        time_radius=time_radius,
-        channel_radius=sorting_parameters.detect_channel_radius,
-        detect_threshold=sorting_parameters.detect_threshold,
-        detect_sign=sorting_parameters.detect_sign,
-        margin_left=sorting_parameters.snippet_T1,
-        margin_right=sorting_parameters.snippet_T2,
-        verbose=True
-    )
+
+    if True:
+        peaks = detect_peaks(recording, detect_threshold=4.0, peak_sign="neg")
+        times = peaks['sample_index'].astype('int32')
+        channel_indices = peaks['channel_index'].astype('int32')
+    else:
+        times, channel_indices = detect_spikes(
+            traces=traces,
+            channel_locations=channel_locations,
+            time_radius=time_radius,
+            channel_radius=sorting_parameters.detect_channel_radius,
+            detect_threshold=sorting_parameters.detect_threshold,
+            detect_sign=sorting_parameters.detect_sign,
+            margin_left=sorting_parameters.snippet_T1,
+            margin_right=sorting_parameters.snippet_T2,
+            verbose=True
+        )
+
+    
     print(f'Detected {len(times)} spikes')
     tt.report()
 
@@ -86,6 +117,13 @@ def sorting_scheme1(
     tt = Timer('remove_duplicate_times')
     # this is important because isosplit does not do well with duplicate points
     times, channel_indices = remove_duplicate_times(times, channel_indices)
+    times, channel_indices = remove_edge_spikes(
+        times, 
+        channel_indices,         
+        T1=sorting_parameters.snippet_T1,
+        T2=sorting_parameters.snippet_T2,
+        num_samples=recording.get_num_samples(),
+    )
     tt.report()
 
     print(f'Extracting {len(times)} snippets')

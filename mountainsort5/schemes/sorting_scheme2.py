@@ -13,7 +13,7 @@ from ..core.remove_duplicate_events import remove_duplicate_events
 from ..core.get_sampled_recording_for_training import get_sampled_recording_for_training
 from ..core.get_times_labels_from_sorting import get_times_labels_from_sorting
 from ..core.Timer import Timer
-
+from spikeinterface.sortingcomponents.peak_detection import detect_peaks
 
 def sorting_scheme2(
     recording: si.BaseRecording, *,
@@ -224,17 +224,34 @@ def sorting_scheme2(
         print('Detecting spikes')
         tt = Timer('SCHEME2 detecting spikes')
         time_radius = int(math.ceil(sorting_parameters.detect_time_radius_msec / 1000 * sampling_frequency))
-        times_chunk, channel_indices_chunk = detect_spikes(
-            traces=traces_chunk,
-            channel_locations=channel_locations,
-            time_radius=time_radius,
-            channel_radius=sorting_parameters.detect_channel_radius,
-            detect_threshold=sorting_parameters.detect_threshold,
-            detect_sign=sorting_parameters.detect_sign,
-            margin_left=sorting_parameters.snippet_T1,
-            margin_right=sorting_parameters.snippet_T2,
-            verbose=False
+        if True:
+            peaks = detect_peaks(recording.frame_slice(start_frame=int(chunk.start - chunk.padding_left), end_frame=int(chunk.end + chunk.padding_right)), detect_threshold=4.0, peak_sign="neg")
+            times_chunk = peaks['sample_index'].astype('int32')
+            channel_indices_chunk = peaks['channel_index'].astype('int32')
+        else:
+            times_chunk, channel_indices_chunk = detect_spikes(
+                traces=traces_chunk,
+                channel_locations=channel_locations,
+                time_radius=time_radius,
+                channel_radius=sorting_parameters.detect_channel_radius,
+                detect_threshold=sorting_parameters.detect_threshold,
+                detect_sign=sorting_parameters.detect_sign,
+                margin_left=sorting_parameters.snippet_T1,
+                margin_right=sorting_parameters.snippet_T2,
+                verbose=False
+            )
+
+        from mountainsort5.schemes.sorting_scheme1 import remove_edge_spikes
+
+        times_chunk, channel_indices_chunk = remove_edge_spikes(
+            times_chunk, 
+            channel_indices_chunk,         
+            T1=sorting_parameters.snippet_T1,
+            T2=sorting_parameters.snippet_T2,
+            num_samples=np.shape(traces_chunk)[0],
         )
+
+        
         print(f'Scheme 2 detected {len(times_chunk)} spikes in chunk {i + 1} of {len(chunks)}')
         tt.report()
 
