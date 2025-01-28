@@ -224,6 +224,7 @@ def sorting_scheme2(
         print('Detecting spikes')
         tt = Timer('SCHEME2 detecting spikes')
         time_radius = int(math.ceil(sorting_parameters.detect_time_radius_msec / 1000 * sampling_frequency))
+        si.set_global_job_kwargs(n_jobs=8)
         if True:
             peaks = detect_peaks(recording.frame_slice(start_frame=int(chunk.start - chunk.padding_left), end_frame=int(chunk.end + chunk.padding_right)), detect_threshold=4.0, peak_sign="neg")
             times_chunk = peaks['sample_index'].astype('int32')
