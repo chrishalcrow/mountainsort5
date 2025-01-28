@@ -92,6 +92,7 @@ def sorting_scheme1(
 
     time_radius = int(math.ceil(sorting_parameters.detect_time_radius_msec / 1000 * sampling_frequency))
 
+    si.set_global_job_kwargs(n_jobs=8)
     if True:
         peaks = detect_peaks(recording, detect_threshold=4.0, peak_sign="neg")
         times = peaks['sample_index'].astype('int32')
